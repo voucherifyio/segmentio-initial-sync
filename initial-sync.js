@@ -1,9 +1,10 @@
 const axios = require("axios");
+require('dotenv').config();
 
-const SEGMENT_ACCESS_TOKEN = "SEGMENT_ACCESS_TOKEN"
-const SPACE_ID = "SPACE_ID";
-const APPLICATION_ID = "APPLICATION_ID";
-const SECRET_KEY = "SECRET_KEY";
+const SEGMENT_ACCESS_TOKEN = process.env.SEGMENT_ACCESS_TOKEN;
+const SPACE_ID = process.env.SPACE_ID;
+const APPLICATION_ID = process.env.APPLICATION_ID;
+const SECRET_KEY = process.env.SECRET_KEY;
 
 
 async function getAllUsersTraitsFromSegment(userIds) {
