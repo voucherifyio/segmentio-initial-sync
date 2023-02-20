@@ -5,16 +5,15 @@ const SEGMENT_ACCESS_TOKEN = process.env.SEGMENT_ACCESS_TOKEN;
 const SPACE_ID = process.env.SPACE_ID;
 const APPLICATION_ID = process.env.APPLICATION_ID;
 const SECRET_KEY = process.env.SECRET_KEY;
+const AUTH_TOKEN = Buffer.from(`${SEGMENT_ACCESS_TOKEN}:`).toString("base64");
+
 
 async function getSegmentProfiles() {
   const profilesUrl = `https://profiles.segment.com/v1/spaces/${SPACE_ID}/collections/users/profiles`;
   try {
     const response = await axios.get(profilesUrl, {
-      auth: {
-        username: SEGMENT_ACCESS_TOKEN,
-        password: "",
-      },
       headers: {
+        Authorization: `Basic ${AUTH_TOKEN}`,
         "Accept-Encoding": "zlib",
       },
     });
@@ -29,20 +28,19 @@ async function getSegmentProfiles() {
 
 async function getAllUsersTraitsFromSegment(userIds) {
   const promisesToGetUsersTraits = userIds.map((id) =>
-    axios.get(`https://profiles.segment.com/v1/spaces/${SPACE_ID}/collections/users/profiles/segment_id:${id}/traits`, {
-      auth: {
-        username: SEGMENT_ACCESS_TOKEN,
-        password: "",
-      },
-      headers: {
-        "Accept-Encoding": "zlib",
-      },
-      params: {
-        limit: 15,
-      },
-    })
+    axios.get(
+      `https://profiles.segment.com/v1/spaces/${SPACE_ID}/collections/users/profiles/segment_id:${id}/traits`,
+      {
+        headers: {
+          Authorization: `Basic ${AUTH_TOKEN}`,
+          "Accept-Encoding": "zlib",
+        },
+        params: {
+          limit: 15,
+        },
+      }
+    )
   );
-
 
   try {
     const responses = await Promise.all(promisesToGetUsersTraits);
@@ -59,15 +57,16 @@ async function getAllUsersTraitsFromSegment(userIds) {
 
 async function getAllUsersIdsFromSegment(userIds) {
   const promisesToGetUsersIds = userIds.map((id) =>
-      axios.get(`https://profiles.segment.com/v1/spaces/${SPACE_ID}/collections/users/profiles/segment_id:${id}/external_ids`, {
-        auth: {
-          username: SEGMENT_ACCESS_TOKEN,
-          password: "",
-        },
+    axios.get(
+      `https://profiles.segment.com/v1/spaces/${SPACE_ID}/collections/users/profiles/segment_id:${id}/external_ids`,
+      {
         headers: {
+          Authorization: `Basic ${AUTH_TOKEN}`,
           "Accept-Encoding": "zlib",
         },
-      }));
+      }
+    )
+  );
 
   try {
     const responses = await Promise.all(promisesToGetUsersIds);
