@@ -7,6 +7,38 @@ const APPLICATION_ID = process.env.APPLICATION_ID;
 const SECRET_KEY = process.env.SECRET_KEY;
 const AUTH_TOKEN = Buffer.from(`${SEGMENT_ACCESS_TOKEN}:`).toString("base64");
 
+async function migrateCustomersFromSegmentToVoucherify() {
+  try {
+    const allSegmentProfiles = await getSegmentProfiles();
+    const allSegmentIds = allSegmentProfiles.map(
+      (segmentProfile) => segmentProfile.segment_id
+    );
+    const voucherifyCustomers = await Promise.all(
+      allSegmentIds.map(async (id) => {
+        const userTraitsFromSegment = await getAllUsersTraitsFromSegment(id);
+        if (!userTraitsFromSegment) {
+          throw new Error(
+            ` User's traits from Segment.io are missing [segment_id: ${id}]`
+          );
+        }
+        const userIdsFromSegment = await getAllUsersIdsFromSegment(id);
+        if (!userIdsFromSegment) {
+          throw new Error(
+            `User's id from Segment.io is missing. [segment_id: ${id}]`
+          );
+        }
+        return { ...userTraitsFromSegment, source_id: userIdsFromSegment };
+      })
+    );
+
+    await upsertCustomersInVoucherify(voucherifyCustomers);
+  } catch (error) {
+    console.error(error);
+    throw new Error(
+      "An error occurred while getting users' data from Segment profiles or while upserting the customers' data to Voucherify."
+    );
+  }
+}
 
 async function getSegmentProfiles() {
   const profilesUrl = `https://profiles.segment.com/v1/spaces/${SPACE_ID}/collections/users/profiles`;
@@ -19,16 +51,18 @@ async function getSegmentProfiles() {
     });
     return response.data.data;
   } catch (error) {
-    console.error(`${error.response.status}: ${error.response.statusText}`);
+    if (error.response) {
+      console.error(`${error.response.status}: ${error.response.statusText}`);
+    }
     throw new Error(
       "An error occured while getting user profiles from Segment.io."
     );
   }
 }
 
-async function getAllUsersTraitsFromSegment(userIds) {
-  const promisesToGetUsersTraits = userIds.map((id) =>
-    axios.get(
+async function getAllUsersTraitsFromSegment(id) {
+  try {
+    const response = await axios.get(
       `https://profiles.segment.com/v1/spaces/${SPACE_ID}/collections/users/profiles/segment_id:${id}/traits`,
       {
         headers: {
@@ -39,25 +73,21 @@ async function getAllUsersTraitsFromSegment(userIds) {
           limit: 15,
         },
       }
-    )
-  );
-
-  try {
-    const responses = await Promise.all(promisesToGetUsersTraits);
-    const usersWithTraits = responses.map((response) => response.data);
-    const extractedUsers = usersWithTraits.map((user) => user.traits);
-    return extractedUsers;
+    );
+    return response.data.traits;
   } catch (error) {
-    console.error(`${error.response.status}: ${error.response.statusText}`);
+    if (error.response) {
+      console.error(`${error.response.status}: ${error.response.statusText}`);
+    }
     throw new Error(
       "An error occured while getting users' traits from Segment.io."
     );
   }
 }
 
-async function getAllUsersIdsFromSegment(userIds) {
-  const promisesToGetUsersIds = userIds.map((id) =>
-    axios.get(
+async function getAllUsersIdsFromSegment(id) {
+  try {
+    const response = await axios.get(
       `https://profiles.segment.com/v1/spaces/${SPACE_ID}/collections/users/profiles/segment_id:${id}/external_ids`,
       {
         headers: {
@@ -65,18 +95,13 @@ async function getAllUsersIdsFromSegment(userIds) {
           "Accept-Encoding": "zlib",
         },
       }
-    )
-  );
-
-  try {
-    const responses = await Promise.all(promisesToGetUsersIds);
-    const usersWithIds = responses.map((response) => response.data.data);
-    const extractedUserIds = usersWithIds.flatMap((userData) =>
-      userData.filter((prop) => prop.type === "user_id").map((prop) => prop.id)
     );
-    return extractedUserIds;
+    const userWithExternalIds = response.data.data;
+    return userWithExternalIds.find(userIdentificator => userIdentificator.type ==="user_id").id
   } catch (error) {
-    console.error(`${error.response.status}: ${error.response.statusText}`);
+    if (error.response) {
+      console.error(`${error.response.status}: ${error.response.statusText}`);
+    }
     throw new Error(
       "An error occured while getting users' ids from Segment.io."
     );
@@ -98,36 +123,11 @@ async function upsertCustomersInVoucherify(voucherifyCustomers) {
       data: voucherifyCustomers,
     });
   } catch (error) {
-    console.error(`${error.response.status}: ${error.response.statusText}`);
+    if (error.response) {
+      console.error(`${error.response.status}: ${error.response.statusText}`);
+    }
     throw new Error(
       "An error occured while upserting customers to Voucherify."
-    );
-  }
-}
-
-async function migrateCustomersFromSegmentToVoucherify() {
-  try {
-    const allSegmentProfiles = await getSegmentProfiles();
-    const segmentIds = allSegmentProfiles.map(
-      (segmentProfile) => segmentProfile.segment_id
-    );
-    const usersTraitsFromSegment = await getAllUsersTraitsFromSegment(segmentIds);
-    if (!usersTraitsFromSegment) {
-      throw new Error("Users traits from Segment.io are missing.");
-    }
-    const usersIdsFromSegment = await getAllUsersIdsFromSegment(segmentIds);
-    if (!usersIdsFromSegment) {
-      throw new Error("Users ids from Segment.io are missing.");
-    }
-    const voucherifyCustomers = usersTraitsFromSegment.map((item, i) => ({
-      ...item,
-      source_id: usersIdsFromSegment[i],
-    }));
-    await upsertCustomersInVoucherify(voucherifyCustomers);
-  } catch (error) {
-    console.error(error);
-    throw new Error(
-      "An error occurred while getting users' data from Segment profiles or while upserting the customers' data to Voucherify."
     );
   }
 }
