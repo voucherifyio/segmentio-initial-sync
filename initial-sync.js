@@ -9,10 +9,11 @@ const AUTH_TOKEN = Buffer.from(`${SEGMENT_ACCESS_TOKEN}:`).toString("base64");
 
 async function migrateCustomersFromSegmentToVoucherify() {
   try {
-    console.log("Getting Profiles From Segment...");
+    console.log("Getting profiles from Segment.io...");
     const allSegmentIds = await getAllSegmentIds();
+    console.log("Getting profiles from Segment.io completed.");
 
-    console.log("Creating Voucherify Customers...");
+    console.log("Creating Voucherify customers...");
     const voucherifyCustomers = await Promise.all(
       allSegmentIds.map(async (id) => {
         const userTraitsFromSegment = await getAllUsersTraitsFromSegment(id);
@@ -30,14 +31,13 @@ async function migrateCustomersFromSegmentToVoucherify() {
         return { ...userTraitsFromSegment, source_id: userIdsFromSegment };
       })
     );
-    
+    console.log("Creating Voucherify customers completed.");
+
     console.log("Upserting Voucherify Customers...");
     await upsertCustomersInVoucherify(voucherifyCustomers);
+    console.log("Upserting Voucherify customers completed.");
   } catch (error) {
-    console.error(error);
-    throw new Error(
-      "An error occurred while getting users' data from Segment profiles or while upserting the customers' data to Voucherify."
-    );
+    throw error;
   }
 }
 
@@ -47,12 +47,12 @@ async function getAllSegmentIds() {
     const response = await axios.get(profilesUrl, {
       headers: {
         Authorization: `Basic ${AUTH_TOKEN}`,
-        "Accept-Encoding": "zlib",
       },
     });
     const allSegmentIds = response.data.data.map(
       (segmentProfile) => segmentProfile.segment_id
     );
+    console.log(allSegmentIds);
     return allSegmentIds;
   } catch (error) {
     if (error.response) {
@@ -71,7 +71,6 @@ async function getAllUsersTraitsFromSegment(id) {
       {
         headers: {
           Authorization: `Basic ${AUTH_TOKEN}`,
-          "Accept-Encoding": "zlib",
         },
         params: {
           limit: 15,
@@ -96,7 +95,6 @@ async function getAllUsersIdsFromSegment(id) {
       {
         headers: {
           Authorization: `Basic ${AUTH_TOKEN}`,
-          "Accept-Encoding": "zlib",
         },
       }
     );

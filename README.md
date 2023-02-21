@@ -9,6 +9,7 @@
   - [Introduction](#introduction)
   - [Installation](#installation)
     - [How to get the keys?](#how-to-get-the-keys)
+  - [Error handling](#error-handling)
 
 ## Introduction
 
@@ -44,3 +45,7 @@ Enter your keys to the right of the equals sign.
 - Go to `Project Settings` and scroll down to find the `Application Keys` header. From there, copy your `Application ID` and `Secret Key`, then paste them in `.env` file.
 
 3. Run `npm start` to start the script execution.
+
+## Error handling
+
+The main function `migrateCustomersFromSegmentToVoucherify()` from which other functions are called is responsible for catching errors. If the error occurs in any function, the error message coming from this function will appear in the console.
