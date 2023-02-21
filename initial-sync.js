@@ -9,10 +9,10 @@ const AUTH_TOKEN = Buffer.from(`${SEGMENT_ACCESS_TOKEN}:`).toString("base64");
 
 async function migrateCustomersFromSegmentToVoucherify() {
   try {
-    const allSegmentProfiles = await getSegmentProfiles();
-    const allSegmentIds = allSegmentProfiles.map(
-      (segmentProfile) => segmentProfile.segment_id
-    );
+    console.log("Getting Profiles From Segment...");
+    const allSegmentIds = await getAllSegmentIds();
+
+    console.log("Creating Voucherify Customers...");
     const voucherifyCustomers = await Promise.all(
       allSegmentIds.map(async (id) => {
         const userTraitsFromSegment = await getAllUsersTraitsFromSegment(id);
@@ -30,7 +30,8 @@ async function migrateCustomersFromSegmentToVoucherify() {
         return { ...userTraitsFromSegment, source_id: userIdsFromSegment };
       })
     );
-
+    
+    console.log("Upserting Voucherify Customers...");
     await upsertCustomersInVoucherify(voucherifyCustomers);
   } catch (error) {
     console.error(error);
@@ -40,7 +41,7 @@ async function migrateCustomersFromSegmentToVoucherify() {
   }
 }
 
-async function getSegmentProfiles() {
+async function getAllSegmentIds() {
   const profilesUrl = `https://profiles.segment.com/v1/spaces/${SPACE_ID}/collections/users/profiles`;
   try {
     const response = await axios.get(profilesUrl, {
@@ -49,7 +50,10 @@ async function getSegmentProfiles() {
         "Accept-Encoding": "zlib",
       },
     });
-    return response.data.data;
+    const allSegmentIds = response.data.data.map(
+      (segmentProfile) => segmentProfile.segment_id
+    );
+    return allSegmentIds;
   } catch (error) {
     if (error.response) {
       console.error(`${error.response.status}: ${error.response.statusText}`);
@@ -97,7 +101,9 @@ async function getAllUsersIdsFromSegment(id) {
       }
     );
     const userWithExternalIds = response.data.data;
-    return userWithExternalIds.find(userIdentificator => userIdentificator.type ==="user_id").id
+    return userWithExternalIds.find(
+      (userIdentificator) => userIdentificator.type === "user_id"
+    ).id;
   } catch (error) {
     if (error.response) {
       console.error(`${error.response.status}: ${error.response.statusText}`);
