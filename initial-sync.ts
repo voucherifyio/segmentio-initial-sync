@@ -8,10 +8,11 @@ import {
   TRAITS_LIMIT,
 } from "./config";
 import {
-  ProfileAPIResponse,
+  ProfileResponse,
   SegmentUserTraits,
   VoucherifyCustomer,
   AllSegmentIdsResponse,
+  SourceId,
 } from "./types";
 
 const AUTH_TOKEN: string = Buffer.from(`${SEGMENT_ACCESS_TOKEN}:`).toString(
@@ -29,8 +30,8 @@ async function migrateCustomersFromSegmentToVoucherify(
   nextPage: string = "0"
 ): Promise<void> {
   try {
-    // Get all Segment Profiles and hasMore and next property
-    const { allSegmentIds, hasMore, next }: ProfileAPIResponse =
+    // Get all Segment Profiles, hasMore and next property
+    const { allSegmentIds, hasMore, next }: ProfileResponse =
       await getAllSegmentIds(limit, nextPage);
 
     // Create Voucherify customers
@@ -40,27 +41,22 @@ async function migrateCustomersFromSegmentToVoucherify(
           await getAllUsersTraitsFromSegment(id);
         if (!userTraits) {
           throw new Error(
-            `User's traits from Segment.io are missing [segment_id: ${id}]`
+            `User's traits from Segment.io are missing. [segment_id: ${id}]`
           );
         }
-        const userIds: string | null = await getAllUsersIdsFromSegment(id);
-        if (!userIds) {
+        const sourceId: SourceId | null = await getSourceIdFromSegment(id);
+        if (!sourceId) {
           throw new Error(
             `User's id from Segment.io is missing. [segment_id: ${id}]`
           );
         }
-        return { ...userTraits, source_id: userIds };
+        return { ...userTraits, source_id: sourceId };
       })
     );
     // Upsert Voucherify customers
-    const upsertResponseStatus: number = await upsertCustomersInVoucherify(
-      voucherifyCustomers
-    );
-    if (upsertResponseStatus === 202) {
-      console.log(
-        `Upserting Voucherify customers completed. Limit: ${limit}, next: ${next}`
-      );
-    }
+    await upsertCustomersInVoucherify(voucherifyCustomers);
+
+    // Repeat until there are no users left to send
     if (hasMore && next) {
       await migrateCustomersFromSegmentToVoucherify(limit, next);
     }
@@ -81,7 +77,7 @@ async function getAllSegmentIds(
       throw new Error("The response object doesn't contain required data.");
     }
 
-    const allSegmentIds = response.data.data.map(
+    const allSegmentIds: string[] = response.data.data.map(
       (segmentProfile: { segment_id: string }) => segmentProfile.segment_id
     );
 
@@ -101,16 +97,19 @@ async function getAllSegmentIds(
 }
 
 async function getAllUsersTraitsFromSegment(
-  id: string
-): Promise<SegmentUserTraits> {
+  segmentId: string
+): Promise<SegmentUserTraits | null> {
   try {
-    const response = await axios.get(`${baseUrl}/segment_id:${id}/traits`, {
-      headers,
-      params: {
-        limit: TRAITS_LIMIT,
-      },
-    });
-    return response.data?.traits;
+    const response = await axios.get(
+      `${baseUrl}/segment_id:${segmentId}/traits`,
+      {
+        headers,
+        params: {
+          limit: TRAITS_LIMIT,
+        },
+      }
+    );
+    return response.data?.traits ?? null;
   } catch (error) {
     if (error.response) {
       console.error(`${error.response.status}: ${error.response.statusText}`);
@@ -120,21 +119,24 @@ async function getAllUsersTraitsFromSegment(
     );
   }
 }
-async function getAllUsersIdsFromSegment(id: string): Promise<string> {
+async function getSourceIdFromSegment(
+  segmentId: string
+): Promise<SourceId | null> {
   try {
     const response = await axios.get(
-      `${baseUrl}/segment_id:${id}/external_ids`,
+      `${baseUrl}/segment_id:${segmentId}/external_ids`,
       {
         headers,
       }
     );
-    const userWithExternalIds = response.data.data;
+    const userWithExternalIds = response?.data?.data;
 
-    return userWithExternalIds.find(
+    const sourceId = userWithExternalIds.find(
       (userIdentificator: { type: string; id: string }) =>
         userIdentificator.type === "user_id" ||
         userIdentificator.type === "anonymous_id"
     ).id;
+    return sourceId ?? null;
   } catch (error) {
     if (error.response) {
       console.error(`${error.response.status}: ${error.response.statusText}`);
@@ -147,7 +149,7 @@ async function getAllUsersIdsFromSegment(id: string): Promise<string> {
 
 async function upsertCustomersInVoucherify(
   voucherifyCustomers: VoucherifyCustomer[]
-) {
+): Promise<void> {
   const voucherifyUrl = `https://api.voucherify.io/v1/customers/bulk/async`;
 
   try {
@@ -158,7 +160,9 @@ async function upsertCustomersInVoucherify(
         "X-App-Token": SECRET_KEY,
       },
     });
-    return status;
+    if (status === 202) {
+      console.log(`Upserting Voucherify customers completed.`);
+    }
   } catch (error) {
     if (error.response) {
       console.error(`${error.response.status}: ${error.response.statusText}`);

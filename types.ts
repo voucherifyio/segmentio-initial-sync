@@ -2,13 +2,17 @@ export type SegmentUserTraits = {
   [key: string]: string;
 };
 
+export type SourceId = {
+  source_id: string;
+};
+
 export type VoucherifyCustomer =
   | SegmentUserTraits
   | {
-      source_id?: string;
+      source_id?: SourceId;
     };
 
-export type ProfileAPIResponse = {
+export type ProfileResponse = {
   allSegmentIds: string[];
   hasMore: boolean;
   next?: string;
