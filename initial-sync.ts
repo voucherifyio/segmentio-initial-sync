@@ -22,32 +22,14 @@ const headers = {
   "Accept-Encoding": "zlib",
 };
 
-async function runMigrationOfCustomers() {
-  let hasMore: boolean = true;
-  let next: string | undefined = "0";
-
-  while (hasMore) {
-    console.log(
-      `Migrating customers. Limit: ${REQUEST_LIMIT}, Has more: ${hasMore}`
-    );
-    const response: ProfileAPIResponse =
-      await migrateCustomersFromSegmentToVoucherify(REQUEST_LIMIT, next);
-    hasMore = response.hasMore;
-    next = response.next;
-  }
-  console.log("Migration completed.");
-}
-
 async function migrateCustomersFromSegmentToVoucherify(
-  limit: string,
-  takeNext: string
+  limit: string = REQUEST_LIMIT,
+  nextPage: string = "0"
 ) {
   try {
     // Get all Segment Profiles and hasMore and next property
-    const { allSegmentIds, hasMore, next } = await getAllSegmentIds(
-      limit,
-      takeNext
-    );
+    const { allSegmentIds, hasMore, next }: ProfileAPIResponse =
+      await getAllSegmentIds(limit, nextPage);
 
     // Create Voucherify customers
     const voucherifyCustomers = await Promise.all(
@@ -72,7 +54,12 @@ async function migrateCustomersFromSegmentToVoucherify(
       voucherifyCustomers
     );
     if (upsertResponseStatus === 202) {
-      console.log("Upserting Voucherify customers completed.");
+      console.log(
+        `Upserting Voucherify customers completed. Limit: ${limit}, next: ${next}`
+      );
+    }
+    if (hasMore && next) {
+      await migrateCustomersFromSegmentToVoucherify(limit, next);
     }
     return { hasMore, next };
   } catch (error) {
@@ -178,4 +165,4 @@ async function upsertCustomersInVoucherify(
     );
   }
 }
-runMigrationOfCustomers();
+migrateCustomersFromSegmentToVoucherify();

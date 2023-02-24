@@ -9,6 +9,7 @@ export type VoucherifyCustomer =
     };
 
 export type ProfileAPIResponse = {
+  allSegmentIds: string[];
   hasMore: boolean;
   next?: string;
 };
