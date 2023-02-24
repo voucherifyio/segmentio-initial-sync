@@ -30,6 +30,8 @@ SEGMENT_ACCESS_TOKEN=segment_access_token
 SPACE_ID=space_id
 APPLICATION_ID=application_id
 SECRET_KEY=secret_key
+REQUEST_LIMIT=request_limit
+TRAITS_LIMIT=traits_limit
 ```
 
 Enter your keys to the right of the equals sign.
@@ -50,53 +52,7 @@ Enter your keys to the right of the equals sign.
 
 ## How does it work?
 
-The main function `migrateCustomersFromSegmentToVoucherify()`:
-1. Calls `getAllSegmentIds()` function,s which obtains all the Segment profiles (they include `segment_id` and `metadata`)
-   
-For example:
-
-```
-[
-  {
-    segment_id: 'use_xxx',
-    metadata: {
-      created_at: '2023-01-19T21:06:19.745Z',
-      updated_at: '2023-01-26T14:35:52.944Z'
-    }
-  },
-  {
-    segment_id: 'use_yyy',
-    metadata: {
-      created_at: '2023-01-19T16:15:58.865Z',
-      updated_at: '2023-01-19T20:06:40.877Z'
-    }
-  }
-]
-```
-
-2. For each of the `segment_id` the main function calls `getAllUsersTraitsFromSegment()` and `getAllUsersIdsFromSegment()` and then creates the `voucherifyCustomers` array.
-
-For example:
-
-```
-[
-  {
-    first_name: 'Jack',
-    last_name: 'McGinnis',
-    phone: '34324234',
-    source_id: 'id1'
-  },
-  {
-    first_name: 'Stephen',
-    last_name: 'Tyler',
-    phone: '454354352',
-    source_id: 'id2'
-  },
-]
-```
-
-3. Then it calls `upsertCustomersInVoucherify()`. The function uses [bulk upsert](https://docs.voucherify.io/reference/post-customers-in-bulk) to upsert all the customers in one request.
-
+The application gets data from Segment.io using Profile API, then creates Voucherify customers and upserts them in bulk. The top-level function indicates the limit of profiles per request. You can specify the [limit](https://segment.com/docs/profiles/profile-api/#pagination) (`REQUEST_LIMIT`) in `.env` file (the default value for Segment request is 10). There's also another limit value, which indicates number of traits downloaded for one customer (`TRAITS_LIMIT`) - default value is 20.
 ## Error handling
 
 The main function `migrateCustomersFromSegmentToVoucherify()` from which other functions are called is responsible for catching errors. If the error occurs in any function, the error message coming from this function will appear in the console.
