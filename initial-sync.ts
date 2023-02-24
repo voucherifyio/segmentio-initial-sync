@@ -130,8 +130,9 @@ async function getAllUsersIdsFromSegment(id: string): Promise<string> {
 
     return userWithExternalIds.find(
       (userIdentificator: { type: string; id: string }) =>
-        userIdentificator.type === "user_id"
+        userIdentificator.type === "user_id" || userIdentificator.type === "anonymous_id"
     ).id;
+
   } catch (error) {
     if (error.response) {
       console.error(`${error.response.status}: ${error.response.statusText}`);
