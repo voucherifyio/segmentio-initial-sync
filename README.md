@@ -1,13 +1,13 @@
 # Segment.io integration - initial data synchronization
 
- This readme is about a Node.js application that does the initial synchronization of user data between Segment.io and Voucherify.
+ This readme is about a Node.js application that does the initial synchronization of user data between Segment.io and Voucherify (from Segment.io to Voucherify).
 
  ## Table of Contents
 
 - [Segment.io integration - initial data synchronization](#segmentio-integration---initial-data-synchronization)
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
-  - [Installation](#installation)
+  - [Installation, configuration and running the app](#installation-configuration-and-running-the-app)
     - [How to get the keys?](#how-to-get-the-keys)
   - [How does it work?](#how-does-it-work)
   - [Error handling](#error-handling)
@@ -15,9 +15,9 @@
 ## Introduction
 
 To be able to synchronize the data that is contained in Segment's [Profiles](https://segment.com/docs/profiles/)
-with customers' data in Voucherify, we needed to create an open-source application that would retrieve, process and transmit the data. The script used [Profile API](https://segment.com/docs/profiles/profile-api/) and [Voucherify API](https://docs.voucherify.io/reference/introduction-1).
+with customers' data in Voucherify, we have an application that would retrieve, process and transmit the data. The script used [Profile API](https://segment.com/docs/profiles/profile-api/) and [Voucherify API](https://docs.voucherify.io/reference/introduction-1).
 
-## Installation
+## Installation, configuration and running the app
 
 To start the application:
 1. Run `npm install` to install all the dependencies.
@@ -34,7 +34,7 @@ REQUEST_LIMIT=request_limit
 TRAITS_LIMIT=traits_limit
 ```
 
-Enter your keys to the right of the equals sign.
+
 
 ### How to get the keys?
 `Segment Access Token` and `Space ID`:
@@ -46,6 +46,8 @@ Enter your keys to the right of the equals sign.
 `Application ID` and `Secret Key`:
 - Login to your Voucherify account. 
 - Go to `Project Settings` and scroll down to find the `Application Keys` header. From there, copy your `Application ID` and `Secret Key`, then paste them in `.env` file.
+
+Enter your keys to the right of the equals sign.
 
 3. Run `npm start` to start the script execution.
 
