@@ -8,7 +8,6 @@ import {
     AUTH_TOKEN,
 } from "./config";
 import {
-    ProfileResponse,
     SegmentUserTraits,
     VoucherifyCustomer,
     AllSegmentIdsResponse,
@@ -143,7 +142,6 @@ async function getSourceIdFromSegment(
         );
         const userWithExternalIds = response?.data?.data;
 
-        //TODO return email
         const sourceId = userWithExternalIds.find(
             (userIdentificator: { type: string; id: string }) =>
                 userIdentificator.type === "user_id" ||
