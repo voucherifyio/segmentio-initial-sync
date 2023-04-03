@@ -1,11 +1,11 @@
 import axios from "axios";
 import {
-  APPLICATION_ID,
-  SECRET_KEY,
+  VOUCHERIFY_APPLICATION_ID,
+  VOUCHERIFY_SECRET_KEY,
   SEGMENT_ACCESS_TOKEN,
-  SPACE_ID,
-  REQUEST_LIMIT,
-  TRAITS_LIMIT,
+  SEGMENT_SPACE_ID,
+  SEGMENT_REQUEST_LIMIT,
+  SEGMENT_TRAITS_LIMIT,
 } from "./config";
 import {
   ProfileResponse,
@@ -19,14 +19,14 @@ const AUTH_TOKEN: string = Buffer.from(`${SEGMENT_ACCESS_TOKEN}:`).toString(
   "base64"
 );
 
-const baseUrl: string = `https://profiles.segment.com/v1/spaces/${SPACE_ID}/collections/users/profiles`;
+const baseUrl: string = `https://profiles.segment.com/v1/spaces/${SEGMENT_SPACE_ID}/collections/users/profiles`;
 const headers: { [key: string]: string } = {
   Authorization: `Basic ${AUTH_TOKEN}`,
   "Accept-Encoding": "zlib",
 };
 
 async function migrateCustomersFromSegmentToVoucherify(
-  limit: string = REQUEST_LIMIT,
+  limit: string = SEGMENT_REQUEST_LIMIT,
   nextPage: string = "0"
 ): Promise<void> {
   try {
@@ -105,7 +105,7 @@ async function getAllUsersTraitsFromSegment(
       {
         headers,
         params: {
-          limit: TRAITS_LIMIT,
+          limit: SEGMENT_TRAITS_LIMIT,
         },
       }
     );
@@ -156,8 +156,8 @@ async function upsertCustomersInVoucherify(
     const { status } = await axios.post(voucherifyUrl, voucherifyCustomers, {
       headers: {
         "Content-Type": "application/json",
-        "X-App-Id": APPLICATION_ID,
-        "X-App-Token": SECRET_KEY,
+        "X-App-Id": VOUCHERIFY_APPLICATION_ID,
+        "X-App-Token": VOUCHERIFY_SECRET_KEY,
       },
     });
     if (status === 202) {

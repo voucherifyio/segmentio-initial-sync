@@ -14,8 +14,7 @@
 
 ## Introduction
 
-To be able to synchronize the data that is contained in Segment's [Profiles](https://segment.com/docs/profiles/)
-with customers' data in Voucherify, we have an application that would retrieve, process and transmit the data. The script used [Profile API](https://segment.com/docs/profiles/profile-api/) and [Voucherify API](https://docs.voucherify.io/reference/introduction-1).
+To be able to make the initial import of customers from Segment to Voucherify, we have an application that would retrieve, process and transmit the data. The script used [Profile API](https://segment.com/docs/profiles/profile-api/) and [Voucherify API](https://docs.voucherify.io/reference/introduction-1).
 
 ## Installation, configuration and running the app
 
@@ -27,11 +26,12 @@ It should look like this:
 
 ```
 SEGMENT_ACCESS_TOKEN=segment_access_token
-SPACE_ID=space_id
-APPLICATION_ID=application_id
-SECRET_KEY=secret_key
-REQUEST_LIMIT=request_limit
-TRAITS_LIMIT=traits_limit
+SEGMENT_SPACE_ID=segment_space_id
+SEGMENT_REQUEST_LIMIT=8
+SEGMENT_TRAITS_LIMIT=15
+VOUCHERIFY_APPLICATION_ID=application_id
+VOUCHERIFY_SECRET_KEY=secret_key
+
 ```
 
 
