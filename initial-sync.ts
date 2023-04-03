@@ -14,6 +14,7 @@ import {
     AllSegmentIdsResponse,
     SourceId,
 } from "./types";
+import {chunkArray} from "./array-helper";
 
 const baseUrl: string = `https://profiles.segment.com/v1/spaces/${SEGMENT_SPACE_ID}/collections/users/profiles`;
 const headers: { [key: string]: string } = {
@@ -22,14 +23,9 @@ const headers: { [key: string]: string } = {
 };
 
 async function migrateCustomersFromSegmentToVoucherify(
-    limit: number = SEGMENT_REQUEST_LIMIT,
-    nextPage: string = "0"
+    allSegmentIds: string[]
 ): Promise<void> {
     try {
-        // Get all Segment Profiles, hasMore and next property
-        const {allSegmentIds, hasMore, next}: ProfileResponse =
-            await getAllSegmentIds(limit, nextPage);
-
         // Create Voucherify customers
         const voucherifyCustomers = await Promise.all(
             allSegmentIds.map(async (id: string) => {
@@ -75,11 +71,6 @@ async function migrateCustomersFromSegmentToVoucherify(
         );
         // Upsert Voucherify customers
         await upsertCustomersInVoucherify(voucherifyCustomers);
-
-        // Repeat until there are no users left to send
-        if (hasMore && next) {
-            await migrateCustomersFromSegmentToVoucherify(limit, next);
-        }
     } catch (error) {
         throw error;
     }
@@ -175,16 +166,13 @@ async function upsertCustomersInVoucherify(
     const voucherifyUrl = `https://api.voucherify.io/v1/customers/bulk/async`;
 
     try {
-        const {status} = await axios.post(voucherifyUrl, voucherifyCustomers, {
+        await axios.post(voucherifyUrl, voucherifyCustomers, {
             headers: {
                 "Content-Type": "application/json",
                 "X-App-Id": VOUCHERIFY_APPLICATION_ID,
                 "X-App-Token": VOUCHERIFY_SECRET_KEY,
             },
         });
-        if (status === 202) {
-            console.log(`Upserting Voucherify customers completed.`);
-        }
     } catch (error) {
         if (error.response) {
             console.error(`${error.response.status}: ${error.response.statusText}`);
@@ -195,4 +183,28 @@ async function upsertCustomersInVoucherify(
     }
 }
 
-migrateCustomersFromSegmentToVoucherify();
+async function runImport() {
+    try {
+        let nextPage = "0";
+        const allSegmentIds = [];
+        while (nextPage) {
+            const {allSegmentIds: segmentIds, next} = await getAllSegmentIds(SEGMENT_REQUEST_LIMIT, nextPage);
+            allSegmentIds.push(...segmentIds);
+            nextPage = next;
+        }
+        console.log(`Fetching of ${allSegmentIds.length} Segment IDs completed.`);
+
+        //Maximum of 100 records to upsert
+        const chunkedSegmentIds = chunkArray(allSegmentIds, 100);
+        const promisesOfUpsertingCustomers = chunkedSegmentIds.map(async (chunk) => {
+            console.log(`Importing ${chunk.length} customers...`);
+            await migrateCustomersFromSegmentToVoucherify(chunk);
+        });
+        await Promise.all(promisesOfUpsertingCustomers);
+        console.log(`Import completed. Imported ${allSegmentIds.length} customers into Voucherify.`);
+    } catch (error) {
+        throw error;
+    }
+}
+
+runImport();
