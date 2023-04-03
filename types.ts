@@ -39,10 +39,6 @@ export interface SegmentUserTraits {
     metadata?: object;
 }
 
-export type SourceId = {
-    source_id: string;
-};
-
 export interface Address {
     city?: string;
     state?: string;
@@ -53,7 +49,7 @@ export interface Address {
 
 export interface VoucherifyCustomer {
     name?: string | undefined;
-    source_id: SourceId | string;
+    source_id: string;
     email?: string | undefined;
     description?: string | undefined;
     address?: Address;

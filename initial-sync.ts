@@ -10,8 +10,7 @@ import {
 import {
     SegmentUserTraits,
     VoucherifyCustomer,
-    AllSegmentIdsResponse,
-    SourceId,
+    AllSegmentIdsResponse
 } from "./types";
 import {chunkArray} from "./array-helper";
 
@@ -35,7 +34,7 @@ async function migrateCustomersFromSegmentToVoucherify(
                         `User's traits from Segment.io are missing. [segment_id: ${id}]`
                     );
                 }
-                const sourceId: SourceId | null = await getSourceIdFromSegment(id);
+                const sourceId: string | null = await getSourceIdFromSegment(id);
                 if (!sourceId) {
                     throw new Error(
                         `User's id from Segment.io is missing. [segment_id: ${id}]`
@@ -132,7 +131,7 @@ async function getAllUsersTraitsFromSegment(
 
 async function getSourceIdFromSegment(
     segmentId: string
-): Promise<SourceId | null> {
+): Promise<string | null> {
     try {
         const response = await axios.get(
             `${baseUrl}/segment_id:${segmentId}/external_ids`,
