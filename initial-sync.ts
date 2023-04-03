@@ -142,9 +142,9 @@ async function getSourceIdFromSegment(
         const userWithExternalIds = response?.data?.data;
 
         const sourceId = userWithExternalIds.find(
-            (userIdentificator: { type: string; id: string }) =>
-                userIdentificator.type === "user_id" ||
-                userIdentificator.type === "anonymous_id"
+            (userIdentifier: { type: string; id: string }) =>
+                userIdentifier.type === "user_id" ||
+                userIdentifier.type === "anonymous_id"
         ).id;
         return sourceId ?? null;
     } catch (error) {
@@ -182,6 +182,7 @@ async function upsertCustomersInVoucherify(
 
 async function runImport() {
     try {
+        // Get all Segment Ids
         let nextPage = "0";
         const allSegmentIds = [];
         while (nextPage) {
@@ -191,7 +192,7 @@ async function runImport() {
         }
         console.log(`Fetching of ${allSegmentIds.length} Segment IDs completed.`);
 
-        //Maximum of 100 records to upsert
+        //Upsert Voucherify Customers (maximum of 100 records)
         const chunkedSegmentIds = chunkArray(allSegmentIds, 100);
         const promisesOfUpsertingCustomers = chunkedSegmentIds.map(async (chunk) => {
             console.log(`Importing ${chunk.length} customers...`);
