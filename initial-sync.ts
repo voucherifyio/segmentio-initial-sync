@@ -12,7 +12,6 @@ import {
     VoucherifyCustomer,
     AllSegmentIdsResponse
 } from "./types";
-import {chunkArray} from "./array-helper";
 
 const baseUrl: string = `https://profiles.segment.com/v1/spaces/${SEGMENT_SPACE_ID}/collections/users/profiles`;
 const headers: { [key: string]: string } = {
@@ -180,28 +179,93 @@ async function upsertCustomersInVoucherify(
     }
 }
 
-async function runImport() {
-    try {
-        // Get all Segment Ids
-        let nextPage = "0";
-        const allSegmentIds = [];
-        while (nextPage) {
-            const {allSegmentIds: segmentIds, next} = await getAllSegmentIds(SEGMENT_REQUEST_LIMIT, nextPage);
-            allSegmentIds.push(...segmentIds);
-            nextPage = next;
-        }
-        console.log(`Fetching of ${allSegmentIds.length} Segment IDs completed.`);
+async function getTraitsForSegmentId(segmentId: string): Promise<SegmentUserTraits> {
+    const userTraits: SegmentUserTraits | null = await getAllUsersTraitsFromSegment(segmentId);
+    if (!userTraits) {
+        throw new Error(
+            `User's traits from Segment.io are missing. [segment_id: ${segmentId}]`
+        );
+    }
 
-        //Upsert Voucherify Customers (maximum of 100 records)
-        const chunkedSegmentIds = chunkArray(allSegmentIds, 100);
-        const promisesOfUpsertingCustomers = chunkedSegmentIds.map(async (chunk) => {
-            console.log(`Importing ${chunk.length} customers...`);
-            await migrateCustomersFromSegmentToVoucherify(chunk);
-        });
-        await Promise.all(promisesOfUpsertingCustomers);
-        console.log(`Import completed. Imported ${allSegmentIds.length} customers into Voucherify.`);
+    return userTraits;
+}
+
+async function getSourceIdForSegmentId(segmentId: string): Promise<string> {
+    const sourceId: string | null = await getSourceIdFromSegment(segmentId);
+    if (!sourceId) {
+        throw new Error(
+            `User's id from Segment.io is missing. [segment_id: ${segmentId}]`
+        );
+    }
+    return sourceId;
+}
+
+const runImport = async () => {
+    try {
+        const allSegmentsIds: string[] = await fetchAllSegmentsIds();
+        const chunkedSegmentsIds = chunkArray(allSegmentsIds, 100);
+
+        for (const chunk of chunkedSegmentsIds) {
+            const segmentResponseForSingleChunk: Promise<VoucherifyCustomer>[] = chunk.map(async segmentId => {
+                const traits = await getTraitsForSegmentId(segmentId);
+                const sourceId = await getSourceIdForSegmentId(segmentId);
+                return mapSegmentResponseIntoVoucherifyRequest(traits, sourceId)
+            })
+
+            const voucherifyCustomer = await Promise.all(segmentResponseForSingleChunk);
+            await upsertCustomersInVoucherify(voucherifyCustomer);
+            console.log(`Upserting ${allSegmentsIds.length} Voucherify customers completed.`)
+        }
     } catch (error) {
-        throw error;
+        console.log(error)
+    }
+}
+const fetchAllSegmentsIds = async (): Promise<string[]> => {
+    let nextPage = "0";
+    const allSegmentIds = [];
+    while (nextPage) {
+        const {allSegmentIds: segmentIds, next} = await getAllSegmentIds(SEGMENT_REQUEST_LIMIT, nextPage);
+        allSegmentIds.push(...segmentIds);
+        nextPage = next;
+    }
+    console.log(`Fetching of ${allSegmentIds.length} Segment IDs completed.`);
+
+    return allSegmentIds;
+}
+
+const chunkArray = (array: string[], chunkSize: number) => {
+    const chunks = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+        chunks.push(array.slice(i, i + chunkSize));
+    }
+    return chunks;
+}
+
+const mapSegmentResponseIntoVoucherifyRequest = (userTraits: SegmentUserTraits, sourceId: string): VoucherifyCustomer => {
+    return {
+        name: userTraits?.name ?? ([userTraits?.firstName ?? userTraits?.first_name, userTraits?.lastName ?? userTraits?.last_name].filter(i => i).join(" ") || null),
+        source_id: sourceId,
+        email: userTraits?.email ?? null,
+        description: userTraits?.description ?? null,
+        address: userTraits?.address
+            ? {
+                city: userTraits.address?.city ?? null,
+                state: userTraits.address?.state ?? null,
+                postal_code: userTraits.address?.postalCode ?? userTraits.address?.postal_code ?? null,
+                line_1: userTraits.address?.street ?? userTraits.address?.line_1 ?? null,
+                country: userTraits.address?.country ?? null,
+            }
+            : {
+                city: userTraits?.city ?? null,
+                state: userTraits?.state ?? null,
+                postal_code: userTraits?.postalCode ?? userTraits?.postal_code ?? null,
+                line_1: userTraits?.street ?? userTraits.line_1 ?? null,
+                country: userTraits?.country ?? null,
+            },
+        phone: userTraits?.phone ?? null,
+        birthdate: (userTraits?.birthdate?.includes("T") ? userTraits?.birthdate.split("T")[0] : userTraits?.birthdate) ?? null,
+        metadata: userTraits?.metadata ?? null,
+        system_metadata: {source: "segmentio"},
     }
 }
 
