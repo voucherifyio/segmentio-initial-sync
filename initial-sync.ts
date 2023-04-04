@@ -50,7 +50,7 @@ async function getAllSegmentIds(
     }
 }
 
-async function getAllUsersTraitsFromSegment(
+async function getAllUserTraitsFromSegment(
     segmentId: string
 ): Promise<SegmentUserTraits | null> {
     try {
@@ -74,7 +74,7 @@ async function getAllUsersTraitsFromSegment(
     }
 }
 
-async function getSourceIdFromSegment(
+async function getUserSourceIdFromSegment(
     segmentId: string
 ): Promise<string | null> {
     try {
@@ -126,7 +126,7 @@ async function upsertCustomersInVoucherify(
 }
 
 async function getTraitsForSegmentId(segmentId: string): Promise<SegmentUserTraits> {
-    const userTraits: SegmentUserTraits | null = await getAllUsersTraitsFromSegment(segmentId);
+    const userTraits: SegmentUserTraits | null = await getAllUserTraitsFromSegment(segmentId);
     if (!userTraits) {
         throw new Error(
             `User's traits from Segment.io are missing. [segment_id: ${segmentId}]`
@@ -137,7 +137,7 @@ async function getTraitsForSegmentId(segmentId: string): Promise<SegmentUserTrai
 }
 
 async function getSourceIdForSegmentId(segmentId: string): Promise<string> {
-    const sourceId: string | null = await getSourceIdFromSegment(segmentId);
+    const sourceId: string | null = await getUserSourceIdFromSegment(segmentId);
     if (!sourceId) {
         throw new Error(
             `User's id from Segment.io is missing. [segment_id: ${segmentId}]`
@@ -155,7 +155,7 @@ const runImport = async () => {
             const segmentResponseForSingleChunk: Promise<VoucherifyCustomer>[] = chunk.map(async segmentId => {
                 const traits = await getTraitsForSegmentId(segmentId);
                 const sourceId = await getSourceIdForSegmentId(segmentId);
-                return mapSegmentResponseIntoVoucherifyRequest(traits, sourceId)
+                return mapSegmentResponseIntoVoucherifyRequest(traits, sourceId);
             })
 
             const voucherifyCustomer = await Promise.all(segmentResponseForSingleChunk);
@@ -176,14 +176,6 @@ const fetchAllSegmentsIds = async (): Promise<string[]> => {
     }
     console.log(`Fetching of ${allSegmentIds.length} Segment IDs completed.`);
     return allSegmentIds;
-}
-
-const chunkArray = (array: string[], chunkSize: number) => {
-    const chunks = [];
-    for (let i = 0; i < array.length; i += chunkSize) {
-        chunks.push(array.slice(i, i + chunkSize));
-    }
-    return chunks;
 }
 
 const mapSegmentResponseIntoVoucherifyRequest = (userTraits: SegmentUserTraits, sourceId: string): VoucherifyCustomer => {
@@ -212,6 +204,14 @@ const mapSegmentResponseIntoVoucherifyRequest = (userTraits: SegmentUserTraits, 
         metadata: userTraits?.metadata ?? null,
         system_metadata: {source: "segmentio"},
     }
+}
+
+const chunkArray = (array: string[], chunkSize: number) => {
+    const chunks = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+        chunks.push(array.slice(i, i + chunkSize));
+    }
+    return chunks;
 }
 
 runImport();
