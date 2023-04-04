@@ -48,7 +48,7 @@ VOUCHERIFY_SECRET_KEY=secret_key
 - If you have previously generated a token, you can use it, or generate a new one by clicking: `Generate token`. Paste
   the token into the `.env` file.
 
-`Application ID` and `Secret Key`:
+`Application ID` and `Secret Key` from Voucherify:
 
 - Login to your Voucherify account.
 - Go to `Project Settings` and scroll down to find the `Application Keys` header. From there, copy your `Application ID`
