@@ -1,13 +1,7 @@
-export type ProfileResponse = {
-    allSegmentIds: string[];
-    hasMore?: boolean;
-    next?: string;
-};
-
 export type AllSegmentIdsResponse = {
     allSegmentIds: string[];
     hasMore?: boolean;
-    next?: string;
+    offset?: string;
 };
 
 export interface SegmentUserTraits {

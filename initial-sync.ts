@@ -38,7 +38,7 @@ async function getAllSegmentIds(
         return {
             allSegmentIds,
             hasMore: response.data.cursor.has_more,
-            next: response.data.cursor.next,
+            offset: response.data.cursor.next,
         };
     } catch (error) {
         if (error.response) {
@@ -167,15 +167,14 @@ const runImport = async () => {
     }
 }
 const fetchAllSegmentsIds = async (): Promise<string[]> => {
-    let nextPage = "0";
+    let next = "0";
     const allSegmentIds = [];
-    while (nextPage) {
-        const {allSegmentIds: segmentIds, next} = await getAllSegmentIds(SEGMENT_REQUEST_LIMIT, nextPage);
+    while (next) {
+        const {allSegmentIds: segmentIds, offset} = await getAllSegmentIds(SEGMENT_REQUEST_LIMIT, next);
         allSegmentIds.push(...segmentIds);
-        nextPage = next;
+        next = offset;
     }
     console.log(`Fetching of ${allSegmentIds.length} Segment IDs completed.`);
-
     return allSegmentIds;
 }
 
