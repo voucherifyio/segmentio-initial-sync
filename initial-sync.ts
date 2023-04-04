@@ -19,60 +19,6 @@ const headers: { [key: string]: string } = {
     "Accept-Encoding": "zlib",
 };
 
-async function migrateCustomersFromSegmentToVoucherify(
-    allSegmentIds: string[]
-): Promise<void> {
-    try {
-        // Create Voucherify customers
-        const voucherifyCustomers = await Promise.all(
-            allSegmentIds.map(async (id: string) => {
-                const userTraits: SegmentUserTraits | null =
-                    await getAllUsersTraitsFromSegment(id);
-                if (!userTraits) {
-                    throw new Error(
-                        `User's traits from Segment.io are missing. [segment_id: ${id}]`
-                    );
-                }
-                const sourceId: string | null = await getSourceIdFromSegment(id);
-                if (!sourceId) {
-                    throw new Error(
-                        `User's id from Segment.io is missing. [segment_id: ${id}]`
-                    );
-                }
-                return {
-                    name: userTraits?.name ?? ([userTraits?.firstName ?? userTraits?.first_name, userTraits?.lastName ?? userTraits?.last_name,].filter(i => i).join(" ") || null),
-                    source_id: sourceId,
-                    email: userTraits?.email ?? null,
-                    description: userTraits?.description ?? null,
-                    address: userTraits?.address
-                        ? {
-                            city: userTraits.address?.city ?? null,
-                            state: userTraits.address?.state ?? null,
-                            postal_code: userTraits.address?.postalCode ?? userTraits.address?.postal_code ?? null,
-                            line_1: userTraits.address?.street ?? userTraits.address?.line_1 ?? null,
-                            country: userTraits.address?.country ?? null,
-                        }
-                        : {
-                            city: userTraits?.city ?? null,
-                            state: userTraits?.state ?? null,
-                            postal_code: userTraits?.postalCode ?? userTraits?.postal_code ?? null,
-                            line_1: userTraits?.street ?? userTraits.line_1 ?? null,
-                            country: userTraits?.country ?? null,
-                        },
-                    phone: userTraits?.phone ?? null,
-                    birthdate: (userTraits?.birthdate?.includes("T") ? userTraits?.birthdate.split("T")[0] : userTraits?.birthdate) ?? null,
-                    metadata: userTraits?.metadata ?? null,
-                    system_metadata: {source: "segmentio"},
-                };
-            })
-        );
-        // Upsert Voucherify customers
-        await upsertCustomersInVoucherify(voucherifyCustomers);
-    } catch (error) {
-        throw error;
-    }
-}
-
 async function getAllSegmentIds(
     limit: number,
     next: string
