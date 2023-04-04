@@ -38,7 +38,7 @@ VOUCHERIFY_SECRET_KEY=secret_key
 
 ```
 
-### How to get the keys?
+### How to get the credentials?
 
 `Segment Access Token` and `Space ID`:
 
