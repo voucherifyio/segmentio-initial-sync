@@ -19,10 +19,7 @@ const headers: { [key: string]: string } = {
     "Accept-Encoding": "zlib",
 };
 
-async function getAllSegmentIds(
-    limit: number,
-    next: string
-): Promise<AllSegmentIdsResponse> {
+const getAllSegmentIds = async (limit: number, next: string): Promise<AllSegmentIdsResponse> => {
     try {
         const response = await axios.get(`${baseUrl}?limit=${limit}&next=${next}`, {
             headers,
@@ -50,9 +47,7 @@ async function getAllSegmentIds(
     }
 }
 
-async function getAllUserTraitsFromSegment(
-    segmentId: string
-): Promise<SegmentUserTraits | null> {
+const getAllUserTraitsFromSegment = async (segmentId: string): Promise<SegmentUserTraits | null> => {
     try {
         const response = await axios.get(
             `${baseUrl}/segment_id:${segmentId}/traits`,
@@ -74,9 +69,7 @@ async function getAllUserTraitsFromSegment(
     }
 }
 
-async function getUserSourceIdFromSegment(
-    segmentId: string
-): Promise<string | null> {
+const getUserSourceIdFromSegment = async (segmentId: string): Promise<string | null> => {
     try {
         const response = await axios.get(
             `${baseUrl}/segment_id:${segmentId}/external_ids`,
@@ -102,19 +95,19 @@ async function getUserSourceIdFromSegment(
     }
 }
 
-async function upsertCustomersInVoucherify(
-    voucherifyCustomers: VoucherifyCustomer[]
-): Promise<void> {
+const upsertCustomersInVoucherify = async (voucherifyCustomers: VoucherifyCustomer[]) => {
     const voucherifyUrl = `https://api.voucherify.io/v1/customers/bulk/async`;
-
+    console.log(voucherifyCustomers)
     try {
-        await axios.post(voucherifyUrl, voucherifyCustomers, {
+        const res  = await axios.post(voucherifyUrl, voucherifyCustomers, {
             headers: {
                 "Content-Type": "application/json",
                 "X-App-Id": VOUCHERIFY_APPLICATION_ID,
                 "X-App-Token": VOUCHERIFY_SECRET_KEY,
             },
         });
+        console.log("rees")
+        console.log(res)
     } catch (error) {
         if (error.response) {
             console.error(`${error.response.status}: ${error.response.statusText}`);
@@ -125,7 +118,7 @@ async function upsertCustomersInVoucherify(
     }
 }
 
-async function getTraitsForSegmentId(segmentId: string): Promise<SegmentUserTraits> {
+const getTraitsForSegmentId = async (segmentId: string): Promise<SegmentUserTraits> => {
     const userTraits: SegmentUserTraits | null = await getAllUserTraitsFromSegment(segmentId);
     if (!userTraits) {
         throw new Error(
@@ -136,7 +129,7 @@ async function getTraitsForSegmentId(segmentId: string): Promise<SegmentUserTrai
     return userTraits;
 }
 
-async function getSourceIdForSegmentId(segmentId: string): Promise<string> {
+const getSourceIdForSegmentId = async (segmentId: string): Promise<string> => {
     const sourceId: string | null = await getUserSourceIdFromSegment(segmentId);
     if (!sourceId) {
         throw new Error(
@@ -148,34 +141,22 @@ async function getSourceIdForSegmentId(segmentId: string): Promise<string> {
 
 const runImport = async () => {
     try {
-        const allSegmentsIds: string[] = await fetchAllSegmentsIds();
-        const chunkedSegmentsIds = chunkArray(allSegmentsIds, 100);
-
-        for (const chunk of chunkedSegmentsIds) {
-            const segmentResponseForSingleChunk: Promise<VoucherifyCustomer>[] = chunk.map(async segmentId => {
+        let next = "0";
+        while (next) {
+            const {allSegmentIds, offset} = await getAllSegmentIds(6, next);
+            const segmentResponseForSingleChunk: Promise<VoucherifyCustomer>[] = allSegmentIds.map(async segmentId => {
                 const traits = await getTraitsForSegmentId(segmentId);
                 const sourceId = await getSourceIdForSegmentId(segmentId);
                 return mapSegmentResponseIntoVoucherifyRequest(traits, sourceId);
             })
-
             const voucherifyCustomer = await Promise.all(segmentResponseForSingleChunk);
             await upsertCustomersInVoucherify(voucherifyCustomer);
-            console.log(`Upserting ${allSegmentsIds.length} Voucherify customers completed.`)
+            next = offset;
         }
+        console.log(`Upserting all Voucherify customers completed.`);
     } catch (error) {
-        console.log(error)
+        console.log(error);
     }
-}
-const fetchAllSegmentsIds = async (): Promise<string[]> => {
-    let next = "0";
-    const allSegmentIds = [];
-    while (next) {
-        const {allSegmentIds: segmentIds, offset} = await getAllSegmentIds(SEGMENT_REQUEST_LIMIT, next);
-        allSegmentIds.push(...segmentIds);
-        next = offset;
-    }
-    console.log(`Fetching of ${allSegmentIds.length} Segment IDs completed.`);
-    return allSegmentIds;
 }
 
 const mapSegmentResponseIntoVoucherifyRequest = (userTraits: SegmentUserTraits, sourceId: string): VoucherifyCustomer => {
@@ -204,14 +185,6 @@ const mapSegmentResponseIntoVoucherifyRequest = (userTraits: SegmentUserTraits, 
         metadata: userTraits?.metadata ?? null,
         system_metadata: {source: "segmentio"},
     }
-}
-
-const chunkArray = (array: string[], chunkSize: number) => {
-    const chunks = [];
-    for (let i = 0; i < array.length; i += chunkSize) {
-        chunks.push(array.slice(i, i + chunkSize));
-    }
-    return chunks;
 }
 
 runImport();
