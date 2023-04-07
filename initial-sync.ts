@@ -97,17 +97,14 @@ const getUserSourceIdFromSegment = async (segmentId: string): Promise<string | n
 
 const upsertCustomersInVoucherify = async (voucherifyCustomers: VoucherifyCustomer[]) => {
     const voucherifyUrl = `https://api.voucherify.io/v1/customers/bulk/async`;
-    console.log(voucherifyCustomers)
     try {
-        const res  = await axios.post(voucherifyUrl, voucherifyCustomers, {
+        await axios.post(voucherifyUrl, voucherifyCustomers, {
             headers: {
                 "Content-Type": "application/json",
                 "X-App-Id": VOUCHERIFY_APPLICATION_ID,
                 "X-App-Token": VOUCHERIFY_SECRET_KEY,
             },
         });
-        console.log("rees")
-        console.log(res)
     } catch (error) {
         if (error.response) {
             console.error(`${error.response.status}: ${error.response.statusText}`);
@@ -118,39 +115,18 @@ const upsertCustomersInVoucherify = async (voucherifyCustomers: VoucherifyCustom
     }
 }
 
-const getTraitsForSegmentId = async (segmentId: string): Promise<SegmentUserTraits> => {
-    const userTraits: SegmentUserTraits | null = await getAllUserTraitsFromSegment(segmentId);
-    if (!userTraits) {
-        throw new Error(
-            `User's traits from Segment.io are missing. [segment_id: ${segmentId}]`
-        );
-    }
-
-    return userTraits;
-}
-
-const getSourceIdForSegmentId = async (segmentId: string): Promise<string> => {
-    const sourceId: string | null = await getUserSourceIdFromSegment(segmentId);
-    if (!sourceId) {
-        throw new Error(
-            `User's id from Segment.io is missing. [segment_id: ${segmentId}]`
-        );
-    }
-    return sourceId;
-}
-
 const runImport = async () => {
     try {
         let next = "0";
         while (next) {
-            const {allSegmentIds, offset} = await getAllSegmentIds(6, next);
+            const {allSegmentIds, offset} = await getAllSegmentIds(SEGMENT_REQUEST_LIMIT, next);
             const segmentResponseForSingleChunk: Promise<VoucherifyCustomer>[] = allSegmentIds.map(async segmentId => {
-                const traits = await getTraitsForSegmentId(segmentId);
-                const sourceId = await getSourceIdForSegmentId(segmentId);
+                const traits = await getAllUserTraitsFromSegment(segmentId);
+                const sourceId = await getUserSourceIdFromSegment(segmentId);
                 return mapSegmentResponseIntoVoucherifyRequest(traits, sourceId);
             })
-            const voucherifyCustomer = await Promise.all(segmentResponseForSingleChunk);
-            await upsertCustomersInVoucherify(voucherifyCustomer);
+            const voucherifyCustomers = await Promise.all(segmentResponseForSingleChunk);
+            await upsertCustomersInVoucherify(voucherifyCustomers);
             next = offset;
         }
         console.log(`Upserting all Voucherify customers completed.`);
