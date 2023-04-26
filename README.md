@@ -6,12 +6,12 @@ Voucherify (from Segment.io to Voucherify).
 ## Table of Contents
 
 - [Segment.io integration - initial data synchronization](#segmentio-integration---initial-data-synchronization)
-    - [Table of Contents](#table-of-contents)
-    - [Introduction](#introduction)
-    - [Installation, configuration and running the app](#installation-configuration-and-running-the-app)
-        - [How to get the keys?](#how-to-get-the-keys)
-    - [How does it work?](#how-does-it-work)
-    - [Error handling](#error-handling)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Installation, configuration and running the app](#installation-configuration-and-running-the-app)
+    - [How to get the credentials?](#how-to-get-the-credentials)
+  - [How does it work?](#how-does-it-work)
+  - [Error handling](#error-handling)
 
 ## Introduction
 
@@ -68,6 +68,6 @@ In one request it is possible to update a maximum of 100 records in Voucherify.
 
 ## Error handling
 
-The main function `migrateCustomersFromSegmentToVoucherify()` from which other functions are called is responsible for
+The main function `runImport()` from which other functions are called is responsible for
 catching errors. If the error occurs in any function, the error message coming from this function will appear in the
 console.

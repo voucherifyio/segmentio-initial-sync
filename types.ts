@@ -1,5 +1,5 @@
 export type AllSegmentIdsResponse = {
-    allSegmentIds: string[];
+    onePageOfSegmentProfiles: string[];
     hasMore?: boolean;
     offset?: string;
 };
