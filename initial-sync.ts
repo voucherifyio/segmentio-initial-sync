@@ -86,12 +86,12 @@ const getUserSourceIdFromSegment = async (segmentId: string): Promise<string | n
         );
         const userWithExternalIds = response?.data?.data;
 
-            const sourceId = userWithExternalIds.find(
-                (userIdentifier: { type: string; id: string }) =>
-                    userIdentifier.type === "user_id"
-            )?.id;
-            return sourceId ?? null;
-       
+        const sourceId = userWithExternalIds.find(
+            (userIdentifier: { type: string; id: string }) =>
+                userIdentifier.type === "user_id"
+        )?.id;
+        return sourceId ?? null;
+
     } catch (error) {
         console.error(error);
         if (error.response) {
@@ -126,17 +126,12 @@ const upsertCustomersInVoucherify = async (voucherifyCustomers: VoucherifyCustom
 const runImport = async (next: string, numberOfUpsertedCustomers: number) => {
     try {
         console.time("Overall script execution time")
-        let errorcounter = 0;
         while (next) {
-                if (errorcounter > 2) {
-                    errorcounter = 0;
-                    throw new Error("blad")
-                }    
             console.info("Current offset: " + next);
-            const {onePageOfSegmentProfiles, offset} = await limiter.schedule(() => getOnePageOfProfilesFromSegment(SEGMENT_REQUEST_LIMIT, next));
+            const { onePageOfSegmentProfiles, offset } = await limiter.schedule(() => getOnePageOfProfilesFromSegment(SEGMENT_REQUEST_LIMIT, next));
             console.log(`Downloaded ${onePageOfSegmentProfiles.length} Segment profiles...`)
-            
-            const progressBar = new ProgressBar(':bar :percent', {total: onePageOfSegmentProfiles.length});
+
+            const progressBar = new ProgressBar(':bar :percent', { total: onePageOfSegmentProfiles.length });
             const segmentResponseForSingleChunk: Promise<VoucherifyCustomer>[] = onePageOfSegmentProfiles.map(async id => {
                 const traits = await limiter.schedule(() => getAllUserTraitsFromSegment(id));
                 const sourceId = await limiter.schedule(() => getUserSourceIdFromSegment(id));
@@ -146,7 +141,6 @@ const runImport = async (next: string, numberOfUpsertedCustomers: number) => {
                 progressBar.tick();
                 return mapSegmentResponseIntoVoucherifyRequest(traits, sourceId);
             })
-            errorcounter++;
             console.info("Creating Voucherify customers' objects...")
             const voucherifyCustomers = await Promise.all(segmentResponseForSingleChunk);
             console.info(`Created ${voucherifyCustomers.length} Voucherify customers' objects.`)
@@ -162,13 +156,12 @@ const runImport = async (next: string, numberOfUpsertedCustomers: number) => {
         console.error(error);
         console.error(`An error occured. Offset: ${next}`);
         console.info(`Trying to resume the process from the offset: ${next}\n`);
-
         try {
-        runImport(next, numberOfUpsertedCustomers);
+            runImport(next, numberOfUpsertedCustomers);
         } catch (error) {
             throw new Error("Cannot resume the execution. Please run the script again.")
         }
-    } 
+    }
 }
 
 const mapSegmentResponseIntoVoucherifyRequest = (userTraits: SegmentUserTraits, sourceId: string): VoucherifyCustomer => {
@@ -195,9 +188,9 @@ const mapSegmentResponseIntoVoucherifyRequest = (userTraits: SegmentUserTraits, 
         phone: userTraits?.phone ?? null,
         birthdate: (userTraits?.birthdate?.includes("T") ? userTraits?.birthdate.split("T")[0] : userTraits?.birthdate) ?? null,
         metadata: userTraits?.metadata ?? null,
-        system_metadata: {source: "segmentio"},
+        system_metadata: { source: "segmentio" },
     }
-}
+    }
 
 let numberOfUpsertedCustomers: number = 0;
 let next: string = "0";
