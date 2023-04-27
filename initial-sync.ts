@@ -1,6 +1,11 @@
 import axios from "axios";
 import moment = require("moment");
-import Bottleneck from 'bottleneck';
+import Bottleneck from "bottleneck";
+import readline = require("readline");
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+})
 const limiter = new Bottleneck({
     minTime: 10
 });
@@ -18,7 +23,6 @@ import {
     VoucherifyCustomer,
     AllSegmentIdsResponse
 } from "./types";
-
 
 const baseUrl: string = `https://profiles.segment.com/v1/spaces/${SEGMENT_SPACE_ID}/collections/users/profiles`;
 const headers: { [key: string]: string } = {
@@ -135,7 +139,7 @@ const runImport = async (next: string, numberOfUpsertedCustomers: number) => {
                 const traits = await limiter.schedule(() => getAllUserTraitsFromSegment(id));
                 const sourceId = await limiter.schedule(() => getUserSourceIdFromSegment(id));
                 if (!sourceId) {
-                    console.warn(`No user_id found for segment_id: ${id}. The source_id will be a null.`)
+                    console.warn(`[segment_id: ${id}] No user_id found. The source_id field will have a null.`)
                 }
                 return mapSegmentResponseIntoVoucherifyRequest(traits, sourceId);
             })
@@ -153,12 +157,19 @@ const runImport = async (next: string, numberOfUpsertedCustomers: number) => {
     } catch (error) {
         console.error(error);
         console.error(`An error occured. Offset: ${next}`);
-        console.info(`Trying to resume the process from the offset: ${next}\n`);
-        try {
-            runImport(next, numberOfUpsertedCustomers);
-        } catch (error) {
-            throw new Error("Cannot resume the execution. Please run the script again.")
-        }
+        rl.question(`Do you wish to resume the process from the offset: ${next}? Type "yes" or "no": `, (answer) => {
+            if (answer.toLowerCase() === "yes") {
+                console.info(`Trying to resume the process from the offset: ${next}\n`);
+                try {
+                    runImport(next, numberOfUpsertedCustomers);
+                } catch (error) {
+                    throw new Error("Cannot resume the execution. Please run the script again.")
+                }
+            } else {
+                console.info("Script execution stopped by the user.")
+                process.exit();
+            }
+        })
     }
 }
 
