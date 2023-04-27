@@ -12,6 +12,8 @@ Voucherify (from Segment.io to Voucherify).
     - [How to get the credentials?](#how-to-get-the-credentials)
   - [How does it work?](#how-does-it-work)
   - [Error handling](#error-handling)
+      - [How fast does the script work?](#how-fast-does-the-script-work)
+  - [Data validation](#data-validation)
 
 ## Introduction
 
@@ -52,7 +54,7 @@ VOUCHERIFY_SECRET_KEY=secret_key
 
 - Login to your Voucherify account.
 - Go to `Project Settings` and scroll down to find the `Application Keys` header. From there, copy your `Application ID`
-  and `Secret Key`, then paste them in `.env` file.
+  and `Secret Key`, then paste them into the `.env` file.
 
 Enter your keys to the right of the equals sign.
 
@@ -62,12 +64,25 @@ Enter your keys to the right of the equals sign.
 
 The application gets data from Segment.io using Profile API, then creates Voucherify customers and upserts them in bulk.
 You can specify the [limit](https://segment.com/docs/profiles/profile-api/#pagination) (`REQUEST_LIMIT`) in `.env` file (the default
-value for Segment request is 100). There's also another limit value, which indicates number of traits downloaded for one
+value for Segment request is 100). There's also another limit value, which indicates the number of traits downloaded for one
 customer (`TRAITS_LIMIT`) - default value is 20.
-In one request it is possible to update a maximum of 100 records in Voucherify.
+In one request, it is possible to update a maximum of 100 records in Voucherify.
+
+First of all, the script gets a specified number of Segment Profiles (segment_ids array). Then it creates Voucherify customers' objects based on information retrieved from Profile API and upserts the specified number of customers in Voucherify.
 
 ## Error handling
 
-The main function `runImport()` from which other functions are called is responsible for
-catching errors. If the error occurs in any function, the error message coming from this function will appear in the
-console.
+The main function `runImport()` from which other functions are called is responsible for catching errors. If the error occurs in any function, the error message coming from this function will appear in the console.
+
+If any error occurs, the prompt asks `Do you wish to resume the process from the offset: [offset]? Type "yes" or "no": ` will be displayed in the console. after typing `yes`, the script should resume its operation from where the error occurred.
+
+#### How fast does the script work? 
+
+This script on average imports 100 customers in 4 seconds, which means that 100,000 customers will be imported in about 1 hour and 6 minutes and 1,000,000 customers in approximately 11 hours and 6 minutes.
+
+The script will consume 201 API calls to Segment per 100 users. 
+
+## Data validation
+
+- source_id: To create a `source_id` field in Voucherify the script expects, that the `userId` field exists in Segment. If not, the customer's `source_id` will be set to null.
+- birthdate: The birthdate passed to Voucherify should be in format ISO8601, which means that the only accepted format is `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm:ss:sssZ`. If the passed birthdate string doesn't match the format, the `birthdate` field will be set to null.
