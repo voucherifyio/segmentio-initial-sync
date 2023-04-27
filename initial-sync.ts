@@ -1,5 +1,5 @@
 import axios from "axios";
-import ProgressBar = require('progress');
+import moment = require("moment");
 import Bottleneck from 'bottleneck';
 const limiter = new Bottleneck({
     minTime: 10
@@ -18,6 +18,7 @@ import {
     VoucherifyCustomer,
     AllSegmentIdsResponse
 } from "./types";
+
 
 const baseUrl: string = `https://profiles.segment.com/v1/spaces/${SEGMENT_SPACE_ID}/collections/users/profiles`;
 const headers: { [key: string]: string } = {
@@ -130,15 +131,12 @@ const runImport = async (next: string, numberOfUpsertedCustomers: number) => {
             console.info("Current offset: " + next);
             const { onePageOfSegmentProfiles, offset } = await limiter.schedule(() => getOnePageOfProfilesFromSegment(SEGMENT_REQUEST_LIMIT, next));
             console.log(`Downloaded ${onePageOfSegmentProfiles.length} Segment profiles...`)
-
-            const progressBar = new ProgressBar(':bar :percent', { total: onePageOfSegmentProfiles.length });
             const segmentResponseForSingleChunk: Promise<VoucherifyCustomer>[] = onePageOfSegmentProfiles.map(async id => {
                 const traits = await limiter.schedule(() => getAllUserTraitsFromSegment(id));
                 const sourceId = await limiter.schedule(() => getUserSourceIdFromSegment(id));
                 if (!sourceId) {
                     console.warn(`No user_id found for segment_id: ${id}. The source_id will be a null.`)
                 }
-                progressBar.tick();
                 return mapSegmentResponseIntoVoucherifyRequest(traits, sourceId);
             })
             console.info("Creating Voucherify customers' objects...")
@@ -165,6 +163,11 @@ const runImport = async (next: string, numberOfUpsertedCustomers: number) => {
 }
 
 const mapSegmentResponseIntoVoucherifyRequest = (userTraits: SegmentUserTraits, sourceId: string): VoucherifyCustomer => {
+    if (!moment(userTraits?.birthdate, moment.ISO_8601, true).isValid()) {
+        userTraits.birthdate = null;
+        console.warn(`[source_id: ${sourceId}] The passed birthdate format is invalid. Only 'YYYY-MM-DD' or 'YYYY-MM-DDTHH:mm:ss:sssZ' format is accepted. The field will have a null value.`)
+    }
+
     return {
         name: userTraits?.name ?? ([userTraits?.firstName ?? userTraits?.first_name, userTraits?.lastName ?? userTraits?.last_name].filter(i => i).join(" ") || null),
         source_id: sourceId,
@@ -186,11 +189,11 @@ const mapSegmentResponseIntoVoucherifyRequest = (userTraits: SegmentUserTraits, 
                 country: userTraits?.country ?? null,
             },
         phone: userTraits?.phone ?? null,
-        birthdate: (userTraits?.birthdate?.includes("T") ? userTraits?.birthdate.split("T")[0] : userTraits?.birthdate) ?? null,
+        birthdate: !!userTraits?.birthdate ? moment(userTraits?.birthdate).format('YYYY-MM-DD') : null,
         metadata: userTraits?.metadata ?? null,
         system_metadata: { source: "segmentio" },
     }
-    }
+}
 
 let numberOfUpsertedCustomers: number = 0;
 let next: string = "0";
