@@ -144,7 +144,7 @@ const runImport = async (next: string, numberOfUpsertedCustomers: number, errorC
                 const traits = await limiter.schedule(() => getAllUserTraitsFromSegment(id));
                 const sourceId = await limiter.schedule(() => getUserSourceIdFromSegment(id));
                 if (!sourceId) {
-                    console.warn(`[segment_id: ${id}] No user_id found. The source_id field will have a null.`)
+                    console.warn(`[segment_id: ${id}] No user_id found. The source_id field will have a null value.`)
                 }
                 return mapSegmentResponseIntoVoucherifyRequest(traits, sourceId);
             })

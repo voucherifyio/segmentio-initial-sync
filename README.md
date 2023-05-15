@@ -26,7 +26,7 @@ and [Voucherify API](https://docs.voucherify.io/reference/introduction-1).
 To start the application:
 
 1. Run `npm install` to install all the dependencies.
-2. Create the `.env` file that will contain keys needed to receive the data.
+2. Create the `.env` file that will contain keys needed to receive the data. You can also use the attached file named: `.env-example` and rename it to `.env`.
 
 It should look like this:
 
@@ -45,7 +45,7 @@ VOUCHERIFY_SECRET_KEY=secret_key
 `Segment Access Token` and `Space ID`:
 
 - Login to your Segment.io account.
-- If you have access to Profiles, select `Profiles` from the sidebar on the left, then `Profiles settings`.
+- If you have access to Unify, select `Unify` from the sidebar on the left, then select `Unify settings`.
 - Go to `API access` tab. From there, copy your `Space ID` and paste in `.env` file.
 - If you have previously generated a token, you can use it, or generate a new one by clicking: `Generate token`. Paste
   the token into the `.env` file.
@@ -60,29 +60,34 @@ Enter your keys to the right of the equals sign.
 
 3. Run `npm start` to start the script execution.
 
+Note: If you wish to start the execution from specific offset (number of Segment profiles being processed), you can also run `npm start <offset>`, for example: `npm start 400`.
+
 ## How does it work?
 
-The application gets data from Segment.io using Profile API, then creates Voucherify customers and upserts them in bulk.
+The application gets data from Segment.io using Profile API, then creates Voucherify customers' objects and upserts them in bulk.
 You can specify the [limit](https://segment.com/docs/profiles/profile-api/#pagination) (`REQUEST_LIMIT`) in `.env` file (the default
 value for Segment request is 100). There's also another limit value, which indicates the number of traits downloaded for one
 customer (`TRAITS_LIMIT`) - default value is 20.
 In one request, it is possible to update a maximum of 100 records in Voucherify.
 
-First of all, the script gets a specified number of Segment Profiles (segment_ids array). Then it creates Voucherify customers' objects based on information retrieved from Profile API and upserts the specified number of customers in Voucherify.
+First of all, the script gets a specified number of Segment Profiles (`segment_ids` array). Then it creates Voucherify customers' objects based on information retrieved from Profile API and upserts the specified number of customers in Voucherify.
 
 ## Error handling
 
 The main function `runImport()` from which other functions are called is responsible for catching errors. If the error occurs in any function, the error message coming from this function will appear in the console.
 
-If any error occurs, the prompt asks `Do you wish to resume the process from the offset: [offset]? Type "yes" or "no": ` will be displayed in the console. after typing `yes`, the script should resume its operation from where the error occurred.
+If any error occurrs, the prompt asks `Do you wish to resume the process from the offset: [offset]? Type "yes" or "no": ` will be displayed in the console. after typing `yes`, the script should resume its operation from where the error occurred.
+
+If the error occurrs more than one time, the script execution stops and shows the offset information in the console. If you want to resume the script execution from the returned offset, you can run `npm start <returned_offset>`
 
 #### How fast does the script work? 
 
-This script on average imports 100 customers in 4 seconds, which means that 100,000 customers will be imported in about 1 hour and 6 minutes and 1,000,000 customers in approximately 11 hours and 6 minutes.
+This script on average imports 100 customers in 4 seconds, which means that 100,000 customers will be imported in about 1 hour and 6 minutes.
+1,000,000 customers  will be imported in approximately 11 hours and 6 minutes.
 
 The script will consume 201 API calls to Segment per 100 users. 
 
 ## Data validation
 
 - source_id: To create a `source_id` field in Voucherify the script expects, that the `userId` field exists in Segment. If not, the customer's `source_id` will be set to null.
-- birthdate: The birthdate passed to Voucherify should be in format ISO8601, which means that the only accepted format is `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm:ss:sssZ`. If the passed birthdate string doesn't match the format, the `birthdate` field will be set to null.
+- birthdate: The birthdate passed to Voucherify should be in format ISO8601, which means that the only accepted format is `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm:ss:sssZ`. If the passed birthdate string doesn't match the format, the `birthdate` field will be set to null and the information about the user will be displayed in the console.
