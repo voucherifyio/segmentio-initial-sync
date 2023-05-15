@@ -139,7 +139,7 @@ const runImport = async (next: string, numberOfUpsertedCustomers: number, errorC
                 const traits = await limiter.schedule(() => getAllUserTraitsFromSegment(id));
                 const sourceId = await limiter.schedule(() => getUserSourceIdFromSegment(id));
                 if (!sourceId) {
-                    console.warn(`[segment_id: ${id}] No user_id found. The source_id field will have a null value.`)
+                    throw new Error(`[segment_id: ${id}] No user_id found. Before restarting the script, make sure that all profiles in Unify have the userId defined, which is required to create a customer in Voucherify.`);
                 }
                 return mapSegmentResponseIntoVoucherifyRequest(traits, sourceId);
             })
