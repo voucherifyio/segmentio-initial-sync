@@ -128,10 +128,15 @@ const upsertCustomersInVoucherify = async (voucherifyCustomers: VoucherifyCustom
     }
 }
 
-const runImport = async (next: string, numberOfUpsertedCustomers: number) => {
+const runImport = async (next: string, numberOfUpsertedCustomers: number, errorCounter: number) => {
+    let errorCount = 0;
     try {
         console.time("Overall script execution time")
         while (next) {
+            errorCount++;
+            if (errorCount > 1) {
+                throw new Error("error")
+            }
             console.info("Current offset: " + next);
             const { onePageOfSegmentProfiles, offset } = await limiter.schedule(() => getOnePageOfProfilesFromSegment(SEGMENT_REQUEST_LIMIT, next));
             console.log(`Downloaded ${onePageOfSegmentProfiles.length} Segment profiles...`)
@@ -143,6 +148,7 @@ const runImport = async (next: string, numberOfUpsertedCustomers: number) => {
                 }
                 return mapSegmentResponseIntoVoucherifyRequest(traits, sourceId);
             })
+      
             console.info("Creating Voucherify customers' objects...")
             const voucherifyCustomers = await Promise.all(segmentResponseForSingleChunk);
             console.info(`Created ${voucherifyCustomers.length} Voucherify customers' objects.`)
@@ -155,13 +161,15 @@ const runImport = async (next: string, numberOfUpsertedCustomers: number) => {
         console.info(`Upserting of ${numberOfUpsertedCustomers} Voucherify customers completed.`);
         console.timeEnd("Overall script execution time")
     } catch (error) {
+        errorCounter++;
         console.error(error);
         console.error(`An error occured. Offset: ${next}`);
+        if (errorCounter < 2) {
         rl.question(`Do you wish to resume the process from the offset: ${next}? Type "yes" or "no": `, (answer) => {
             if (answer.toLowerCase() === "yes") {
                 console.info(`Trying to resume the process from the offset: ${next}\n`);
                 try {
-                    runImport(next, numberOfUpsertedCustomers);
+                    runImport(next, numberOfUpsertedCustomers, errorCounter);
                 } catch (error) {
                     throw new Error("Cannot resume the execution. Please run the script again.")
                 }
@@ -170,6 +178,10 @@ const runImport = async (next: string, numberOfUpsertedCustomers: number) => {
                 process.exit();
             }
         })
+    } else {
+        console.error(`Error occurred more than one time. The current offset is: ${next}. If you want to continue from the last offset, type into the console: "npm start ${next}". Exiting the script.`)
+        process.exit(1);
+        }
     }
 }
 
@@ -207,5 +219,6 @@ const mapSegmentResponseIntoVoucherifyRequest = (userTraits: SegmentUserTraits, 
 }
 
 let numberOfUpsertedCustomers: number = 0;
-let next: string = "0";
-runImport(next, numberOfUpsertedCustomers);
+let next: string = process.argv[2] || "0";
+let errorCounter: number = 0;
+runImport(next, numberOfUpsertedCustomers, errorCounter);
