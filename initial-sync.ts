@@ -129,14 +129,9 @@ const upsertCustomersInVoucherify = async (voucherifyCustomers: VoucherifyCustom
 }
 
 const runImport = async (next: string, numberOfUpsertedCustomers: number, errorCounter: number) => {
-    let errorCount = 0;
     try {
         console.time("Overall script execution time")
         while (next) {
-            errorCount++;
-            if (errorCount > 1) {
-                throw new Error("error")
-            }
             console.info("Current offset: " + next);
             const { onePageOfSegmentProfiles, offset } = await limiter.schedule(() => getOnePageOfProfilesFromSegment(SEGMENT_REQUEST_LIMIT, next));
             console.log(`Downloaded ${onePageOfSegmentProfiles.length} Segment profiles...`)
@@ -179,7 +174,7 @@ const runImport = async (next: string, numberOfUpsertedCustomers: number, errorC
             }
         })
     } else {
-        console.error(`Error occurred more than one time. The current offset is: ${next}. If you want to continue from the last offset, type into the console: "npm start ${next}". Exiting the script.`)
+        console.error(`Error occurred more than once. The current offset is: ${next}. If you want to continue from the last offset, type into the console: "npm start ${next}". Exiting the script.`)
         process.exit(1);
         }
     }
