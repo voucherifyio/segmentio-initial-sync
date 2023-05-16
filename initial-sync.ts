@@ -17,6 +17,7 @@ import {
     SEGMENT_REQUEST_LIMIT,
     SEGMENT_TRAITS_LIMIT,
     AUTH_TOKEN,
+    IDENTIFIER_SAVED_AS_SOURCE_ID
 } from "./config";
 import {
     SegmentUserTraits,
@@ -91,11 +92,11 @@ const getUserSourceIdFromSegment = async (segmentId: string): Promise<string | n
         );
         const userWithExternalIds = response?.data?.data;
 
-        const sourceId = userWithExternalIds.find(
+        const identifierSavedAsSourceId = userWithExternalIds.find(
             (userIdentifier: { type: string; id: string }) =>
-                userIdentifier.type === "user_id"
+                userIdentifier.type === IDENTIFIER_SAVED_AS_SOURCE_ID
         )?.id;
-        return sourceId ?? null;
+        return identifierSavedAsSourceId ?? null;
 
     } catch (error) {
         console.error(error);
@@ -137,11 +138,11 @@ const runImport = async (next: string, numberOfUpsertedCustomers: number, errorC
             console.log(`Downloaded ${onePageOfSegmentProfiles.length} Segment profiles...`)
             const segmentResponseForSingleChunk: Promise<VoucherifyCustomer>[] = onePageOfSegmentProfiles.map(async id => {
                 const traits = await limiter.schedule(() => getAllUserTraitsFromSegment(id));
-                const sourceId = await limiter.schedule(() => getUserSourceIdFromSegment(id));
-                if (!sourceId) {
-                    throw new Error(`[segment_id: ${id}] No user_id found. Before restarting the script, make sure that all profiles in Unify have the userId defined, which is required to create a customer in Voucherify.`);
+                const identifierSavedAsSourceId = await limiter.schedule(() => getUserSourceIdFromSegment(id));
+                if (!identifierSavedAsSourceId) {
+                    console.warn(`[segment_id: ${id}] No ${IDENTIFIER_SAVED_AS_SOURCE_ID} property found in the Segment's external ids. Before restarting the script, make sure that all profiles in Unify have the ${IDENTIFIER_SAVED_AS_SOURCE_ID} property defined, which is required to create a customer in Voucherify.`)
                 }
-                return mapSegmentResponseIntoVoucherifyRequest(traits, sourceId);
+                return mapSegmentResponseIntoVoucherifyRequest(traits, identifierSavedAsSourceId);
             })
       
             console.info("Creating Voucherify customers' objects...")

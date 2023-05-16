@@ -8,6 +8,7 @@ export const SEGMENT_REQUEST_LIMIT = process.env.SEGMENT_REQUEST_LIMIT ? parseIn
 export const SEGMENT_TRAITS_LIMIT = process.env.SEGMENT_TRAITS_LIMIT ? parseInt(process.env.SEGMENT_TRAITS_LIMIT) : throwMissingVariableError('SEGMENT_TRAITS_LIMIT');
 export const VOUCHERIFY_APPLICATION_ID = process.env.VOUCHERIFY_APPLICATION_ID ? process.env.VOUCHERIFY_APPLICATION_ID : throwMissingVariableError('VOUCHERIFY_APPLICATION_ID');
 export const VOUCHERIFY_SECRET_KEY = process.env.VOUCHERIFY_SECRET_KEY ? process.env.VOUCHERIFY_SECRET_KEY : throwMissingVariableError('VOUCHERIFY_SECRET_KEY');
+export const IDENTIFIER_SAVED_AS_SOURCE_ID = process.env.IDENTIFIER_SAVED_AS_SOURCE_ID ? process.env.IDENTIFIER_SAVED_AS_SOURCE_ID : throwMissingVariableError('IDENTIFIER_SAVED_AS_SOURCE_ID');
 export const AUTH_TOKEN: string = Buffer.from(`${SEGMENT_ACCESS_TOKEN}:`).toString("base64");
 
 function throwMissingVariableError(name: string): never {
