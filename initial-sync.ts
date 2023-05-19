@@ -142,7 +142,7 @@ const runImport = async (next: string, numberOfUpsertedCustomers: number, errorC
                 const identifierSavedAsSourceId = await limiter.schedule(() => getUserSourceIdFromSegment(id));
                 if (!identifierSavedAsSourceId) {
                     console.warn(`[segment_id: ${id}] No ${IDENTIFIER_SAVED_AS_SOURCE_ID} property found in the Segment's external ids. Before restarting the script, make sure that all profiles in Unify have the ${IDENTIFIER_SAVED_AS_SOURCE_ID} property defined, which is required to create a customer in Voucherify.`);
-                    fs.appendFile("profiles-without-identifier.txt", `${id}\n`, (err) => {
+                    fs.appendFile("profiles-without-identifier.csv", `${id}\n`, (err) => {
                         if (err) {
                           console.error(err);
                         }
