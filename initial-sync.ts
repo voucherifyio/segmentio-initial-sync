@@ -2,6 +2,7 @@ import axios from "axios";
 import moment = require("moment");
 import Bottleneck from "bottleneck";
 import readline = require("readline");
+import fs = require("fs");
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -135,12 +136,19 @@ const runImport = async (next: string, numberOfUpsertedCustomers: number, errorC
         while (next) {
             console.info("Current offset: " + next);
             const { onePageOfSegmentProfiles, offset } = await limiter.schedule(() => getOnePageOfProfilesFromSegment(SEGMENT_REQUEST_LIMIT, next));
-            console.log(`Downloaded ${onePageOfSegmentProfiles.length} Segment profiles...`)
+            console.log(`Downloaded ${onePageOfSegmentProfiles.length} Segment profiles.`)
             const segmentResponseForSingleChunk: Promise<VoucherifyCustomer>[] = onePageOfSegmentProfiles.map(async id => {
                 const traits = await limiter.schedule(() => getAllUserTraitsFromSegment(id));
                 const identifierSavedAsSourceId = await limiter.schedule(() => getUserSourceIdFromSegment(id));
                 if (!identifierSavedAsSourceId) {
-                    console.warn(`[segment_id: ${id}] No ${IDENTIFIER_SAVED_AS_SOURCE_ID} property found in the Segment's external ids. Before restarting the script, make sure that all profiles in Unify have the ${IDENTIFIER_SAVED_AS_SOURCE_ID} property defined, which is required to create a customer in Voucherify.`)
+                    console.warn(`[segment_id: ${id}] No ${IDENTIFIER_SAVED_AS_SOURCE_ID} property found in the Segment's external ids. Before restarting the script, make sure that all profiles in Unify have the ${IDENTIFIER_SAVED_AS_SOURCE_ID} property defined, which is required to create a customer in Voucherify.`);
+                    fs.appendFile("profiles-without-identifier.txt", `${id}\n`, (err) => {
+                        if (err) {
+                          console.error(err);
+                        }
+                          return;
+                      });
+                    console.info("Profiles ids that have not been imported due to lack of identifier are stored in the 'profiles-without-identifier.txt` file.");
                 }
                 return mapSegmentResponseIntoVoucherifyRequest(traits, identifierSavedAsSourceId);
             })
@@ -217,4 +225,9 @@ const mapSegmentResponseIntoVoucherifyRequest = (userTraits: SegmentUserTraits, 
 let numberOfUpsertedCustomers: number = 0;
 let next: string = process.argv[2] || "0";
 let errorCounter: number = 0;
+fs.writeFile("profiles-without-identifier.txt", "", err => {
+    if (err) {
+        console.error(err);
+    }
+});
 runImport(next, numberOfUpsertedCustomers, errorCounter);

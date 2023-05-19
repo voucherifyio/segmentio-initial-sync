@@ -37,8 +37,11 @@ SEGMENT_REQUEST_LIMIT=100
 SEGMENT_TRAITS_LIMIT=15
 VOUCHERIFY_APPLICATION_ID=application_id
 VOUCHERIFY_SECRET_KEY=secret_key
-
+IDENTIFIER_SAVED_AS_SOURCE_ID="user_id"
 ```
+
+**Note:** The default Segment's identifier that will be saved as `source_id` in Voucherify is set to `user_id`. If you wish to use e.g. `email` as a default identifier - change the property value in the `.env` file.
+if any of the Segment's profiles does not have the given identifier, it will be written to the file `profiles-without-identifier.txt` in the currect directory.
 
 ### How do I get the credentials?
 
